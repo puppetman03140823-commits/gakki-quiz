@@ -164,22 +164,35 @@ play.onclick = () => {
     audioEl.currentTime = 0; audioEl.play();
     return;
   }
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const osc = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
-  osc.type = "sawtooth"; osc.frequency.value = 110;
-  f.type = "lowpass"; f.frequency.value = 700;
-  const now = ctx.currentTime;
-  g.gain.setValueAtTime(0, now);
-  g.gain.linearRampToValueAtTime(0.35, now + 0.3);
-  g.gain.setValueAtTime(0.35, now + 1.6);
-  g.gain.linearRampToValueAtTime(0, now + 2.2);
-  osc.frequency.setValueAtTime(110, now);
-  osc.frequency.linearRampToValueAtTime(98, now + 2.2);
-  osc.connect(f); f.connect(g); g.connect(ctx.destination);
-  osc.start(now); osc.stop(now + 2.3);
+  // 仮の音：音楽ファイル（WAV）をその場で作り、ふつうの音声として再生する
+  // （iPhoneのマナーモードでも鳴るように、Web Audioではなく<audio>で鳴らす）
+  if (!audioEl) audioEl = new Audio(makePlaceholderWav());
+  audioEl.currentTime = 0;
+  audioEl.play().catch(() => {});
   playText.textContent = UI[lang].playing;
-  setTimeout(() => { playText.textContent = UI[lang].play; ctx.close(); }, 2400);
+  audioEl.onended = () => { playText.textContent = UI[lang].play; };
 };
+
+function makePlaceholderWav(){
+  const rate = 22050, dur = 2.2, n = Math.floor(rate * dur);
+  const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); str(8, "WAVE");
+  str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, "data"); v.setUint32(40, n * 2, true);
+  let phase = 0, lp = 0;
+  const k = 1 - Math.exp(-2 * Math.PI * 700 / rate); // ローパス（こもった音にする）
+  for (let i = 0; i < n; i++){
+    const t = i / rate;
+    const freq = 110 - 12 * (t / dur);
+    phase = (phase + freq / rate) % 1;
+    lp += k * ((phase * 2 - 1) - lp);
+    const env = t < 0.3 ? t / 0.3 : t > 1.6 ? Math.max(0, (dur - t) / 0.6) : 1;
+    v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, lp * env * 0.8)) * 32767, true);
+  }
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
 
 render();
 </script>
