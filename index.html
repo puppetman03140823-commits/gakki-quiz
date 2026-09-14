@@ -1,0 +1,185 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>楽器の音クイズ</title>
+<meta name="robots" content="noindex">
+<style>
+  :root{
+    --bg:#f6f1e7; --card:#fffdf8; --ink:#2a2420; --sub:#6b6058;
+    --accent:#b23a2a; --ok:#2f7d4f; --ng:#9a3b2e; --line:#e3d9c8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;line-height:1.7}
+  .wrap{max-width:480px;margin:0 auto;padding:16px 16px 40px}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .label{font-size:12px;letter-spacing:.1em;color:var(--accent);font-weight:700}
+  .lang{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+  .lang button{border:0;background:transparent;padding:6px 14px;font-size:13px;color:var(--sub);cursor:pointer}
+  .lang button.on{background:var(--ink);color:#fff}
+  h1{font-size:22px;line-height:1.45;margin:4px 0 20px}
+  .choices{display:grid;gap:12px}
+  .choice{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+    background:var(--card);border:2px solid var(--line);border-radius:14px;
+    padding:16px;font-size:17px;color:var(--ink);cursor:pointer}
+  .choice .n{flex:none;width:30px;height:30px;border-radius:50%;background:var(--bg);
+    display:grid;place-items:center;font-weight:700;font-size:15px}
+  .choice:disabled{cursor:default}
+  .choice.correct{border-color:var(--ok);background:#eaf5ee}
+  .choice.correct .n{background:var(--ok);color:#fff}
+  .choice.wrong{border-color:var(--ng);background:#f8ebe8}
+  .choice.dim{opacity:.45}
+  .result{margin-top:24px;background:var(--card);border-radius:16px;padding:20px;
+    border:1px solid var(--line)}
+  .verdict{font-size:26px;font-weight:800;margin:0 0 4px}
+  .verdict.ok{color:var(--ok)} .verdict.ng{color:var(--ng)}
+  .answer{font-weight:700;margin:0 0 12px}
+  .explain{margin:0 0 20px;color:var(--ink)}
+  .play{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+    border:0;border-radius:14px;background:var(--accent);color:#fff;
+    font-size:18px;font-weight:700;padding:16px;cursor:pointer}
+  .play svg{width:22px;height:22px;fill:currentColor}
+  video{display:block;width:100%;border-radius:12px;margin-top:12px;background:#000}
+  .note{font-size:12px;color:var(--sub);margin:8px 0 0;text-align:center}
+  .more{margin:20px 0 0;text-align:center;color:var(--sub);font-size:14px}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <span class="label" id="label"></span>
+    <div class="lang">
+      <button data-l="ja">日本語</button>
+      <button data-l="en">English</button>
+    </div>
+  </div>
+
+  <h1 id="question"></h1>
+  <div class="choices" id="choices"></div>
+
+  <div class="result" id="result" hidden>
+    <p class="verdict" id="verdict"></p>
+    <p class="answer" id="answer"></p>
+    <p class="explain" id="explain"></p>
+    <button class="play" id="play">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      <span id="playText"></span>
+    </button>
+    <video id="movie" playsinline controls preload="none" hidden></video>
+    <p class="note" id="note"></p>
+    <p class="more" id="more"></p>
+  </div>
+</div>
+
+<script>
+// ===== 問題データ（楽器ごとにここを増やす）=====
+// 竹の楽器：問題・選択肢・正解・解説は確認済み（2026-09-14）。音は仮の合成音を暫定採用
+const QUIZ = {
+  takebora: {
+    answer: 1, // 0始まり → 2番目「ほら貝」
+    video: "",  // 演奏動画ができたら "video/takebora.mp4" のように入れる（最優先）
+    audio: "",  // 動画がなく音だけの場合は "audio/takebora.mp3" のように入れる
+    ja: {
+      label: "楽器クイズ",
+      question: "この楽器で、|どんな音を表現する？",
+      choices: ["牛の鳴き声", "ほら貝", "お寺の鐘"],
+      explain: "竹の筒に穴をあけたこの楽器は、戦の場面などで「ほら貝」の音を表すのに使われます。本物のほら貝の代わりに、舞台の効果音として鳴らします。"
+    },
+    en: {
+      label: "Instrument Quiz",
+      question: "What sound does this instrument imitate?",
+      choices: ["A cow mooing", "A conch shell horn", "A temple bell"],
+      explain: "This bamboo tube with holes imitates the sound of a conch shell horn, often heard in battle scenes. It is used on stage as a sound effect in place of a real conch."
+    }
+  }
+};
+
+const UI = {
+  ja: { ok:"正解！", ng:"ざんねん…", ans:"答え：", play:"演奏を聴く", playing:"再生中…",
+        note:"※いまは仮の音です", more:"ほかのパネルの楽器にも挑戦してみよう" },
+  en: { ok:"Correct!", ng:"Not quite…", ans:"Answer: ", play:"Listen", playing:"Playing…",
+        note:"*Placeholder sound", more:"Try the other instruments in the exhibit!" }
+};
+
+const id = new URLSearchParams(location.search).get("q") || "takebora";
+const q = QUIZ[id] || QUIZ.takebora;
+let lang = (navigator.language || "ja").startsWith("ja") ? "ja" : "en";
+let picked = null;
+
+function render(){
+  const t = q[lang], u = UI[lang];
+  document.documentElement.lang = lang;
+  document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("on", b.dataset.l === lang));
+  label.textContent = t.label;
+  // 「、」「？」の後ろなど、区切りのいい所でだけ改行させる
+  question.innerHTML = "";
+  t.question.split("|").forEach(part => {
+    const s = document.createElement("span");
+    s.style.display = "inline-block";
+    s.textContent = part;
+    question.appendChild(s);
+  });
+
+  choices.innerHTML = "";
+  t.choices.forEach((c, i) => {
+    const b = document.createElement("button");
+    b.className = "choice";
+    b.innerHTML = `<span class="n">${i+1}</span><span></span>`;
+    b.lastChild.textContent = c;
+    if (picked !== null){
+      b.disabled = true;
+      if (i === q.answer) b.classList.add("correct");
+      else if (i === picked) b.classList.add("wrong");
+      else b.classList.add("dim");
+    }
+    b.onclick = () => { picked = i; render(); result.scrollIntoView({behavior:"smooth", block:"start"}); };
+    choices.appendChild(b);
+  });
+
+  result.hidden = picked === null;
+  if (picked !== null){
+    const ok = picked === q.answer;
+    verdict.textContent = ok ? u.ok : u.ng;
+    verdict.className = "verdict " + (ok ? "ok" : "ng");
+    answer.textContent = u.ans + t.choices[q.answer];
+    explain.textContent = t.explain;
+    playText.textContent = u.play;
+    note.textContent = (q.video || q.audio) ? "" : u.note;
+    more.textContent = u.more;
+  }
+}
+
+document.querySelectorAll(".lang button").forEach(b => b.onclick = () => { lang = b.dataset.l; render(); });
+
+// 再生：音源があればそれを、なければ仮の音（ブォーという低い音）を鳴らす
+let audioEl = null;
+play.onclick = () => {
+  if (q.video){
+    if (!movie.src) movie.src = q.video;
+    movie.hidden = false;
+    movie.currentTime = 0; movie.play();
+    return;
+  }
+  if (q.audio){
+    if (!audioEl) audioEl = new Audio(q.audio);
+    audioEl.currentTime = 0; audioEl.play();
+    return;
+  }
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+  osc.type = "sawtooth"; osc.frequency.value = 110;
+  f.type = "lowpass"; f.frequency.value = 700;
+  const now = ctx.currentTime;
+  g.gain.setValueAtTime(0, now);
+  g.gain.linearRampToValueAtTime(0.35, now + 0.3);
+  g.gain.setValueAtTime(0.35, now + 1.6);
+  g.gain.linearRampToValueAtTime(0, now + 2.2);
+  osc.frequency.setValueAtTime(110, now);
+  osc.frequency.linearRampToValueAtTime(98, now + 2.2);
+  osc.connect(f); f.connect(g); g.connect(ctx.destination);
+  osc.start(now); osc.stop(now + 2.3);
+  playText.textContent = UI[lang].playing;
+  setTimeout(() => { playText.textContent = UI[lang].play; ctx.close(); }, 2400);
+};
+
+render();
+</script>
