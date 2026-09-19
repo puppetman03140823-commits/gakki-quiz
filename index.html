@@ -6,7 +6,7 @@
 <style>
   :root{
     --bg:#f6f1e7; --card:#fffdf8; --ink:#2a2420; --sub:#6b6058;
-    --accent:#b23a2a; --ok:#2f7d4f; --ng:#9a3b2e; --line:#e3d9c8;
+    --accent:#b23a2a; --ok:#2f7d4f; --ng:#9a3b2e; --line:#e3d9c8; --ph:#e9e1d3;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
@@ -18,6 +18,24 @@
   .lang button{border:0;background:transparent;padding:6px 14px;font-size:13px;color:var(--sub);cursor:pointer}
   .lang button.on{background:var(--ink);color:#fff}
   h1{font-size:22px;line-height:1.45;margin:4px 0 20px}
+
+  /* 写真・動画（素材がないときは「準備中」の枠） */
+  .photo{display:block;width:100%;border-radius:14px;margin-bottom:16px;object-fit:cover}
+  .ph{display:grid;place-items:center;text-align:center;width:100%;border-radius:14px;
+    background:var(--ph);border:2px dashed #cdbfa8;color:var(--sub);font-size:14px;padding:12px}
+  .ph.photo-ph{aspect-ratio:4/3;margin-bottom:16px}
+  .ph.video-ph{aspect-ratio:16/9}
+  .ph b{display:block;font-size:16px;color:var(--ink)}
+  video{display:block;width:100%;border-radius:14px;background:#000}
+
+  .play{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+    border:0;border-radius:14px;background:var(--accent);color:#fff;
+    font-size:18px;font-weight:700;padding:16px;cursor:pointer}
+  .play svg{width:22px;height:22px;fill:currentColor}
+  .play.small{width:auto;font-size:14px;padding:8px 16px;margin-top:10px;border-radius:999px}
+  .sound{margin-bottom:20px}
+  .note{font-size:12px;color:var(--sub);margin:8px 0 0;text-align:center}
+
   .choices{display:grid;gap:12px}
   .choice{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
     background:var(--card);border:2px solid var(--line);border-radius:14px;
@@ -29,18 +47,12 @@
   .choice.correct .n{background:var(--ok);color:#fff}
   .choice.wrong{border-color:var(--ng);background:#f8ebe8}
   .choice.dim{opacity:.45}
-  .result{margin-top:24px;background:var(--card);border-radius:16px;padding:20px;
-    border:1px solid var(--line)}
+
+  .result{margin-top:24px;background:var(--card);border-radius:16px;padding:20px;border:1px solid var(--line)}
   .verdict{font-size:26px;font-weight:800;margin:0 0 4px}
   .verdict.ok{color:var(--ok)} .verdict.ng{color:var(--ng)}
   .answer{font-weight:700;margin:0 0 12px}
-  .explain{margin:0 0 20px;color:var(--ink)}
-  .play{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
-    border:0;border-radius:14px;background:var(--accent);color:#fff;
-    font-size:18px;font-weight:700;padding:16px;cursor:pointer}
-  .play svg{width:22px;height:22px;fill:currentColor}
-  video{display:block;width:100%;border-radius:12px;margin-top:12px;background:#000}
-  .note{font-size:12px;color:var(--sub);margin:8px 0 0;text-align:center}
+  .explain{margin:0 0 20px;white-space:pre-line}  /* 解説の改行をそのまま表示 */
   .more{margin:20px 0 0;text-align:center;color:var(--sub);font-size:14px}
 </style>
 
@@ -53,126 +65,271 @@
     </div>
   </div>
 
-  <h1 id="question"></h1>
-  <div class="choices" id="choices"></div>
+  <!-- 問題の部分（型によって並びが変わる） -->
+  <div id="stage"></div>
 
+  <!-- 答えの部分（どの型も同じ） -->
   <div class="result" id="result" hidden>
     <p class="verdict" id="verdict"></p>
     <p class="answer" id="answer"></p>
     <p class="explain" id="explain"></p>
-    <button class="play" id="play">
-      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-      <span id="playText"></span>
-    </button>
-    <video id="movie" playsinline controls preload="none" hidden></video>
-    <p class="note" id="note"></p>
+    <div id="videoArea"></div>
+    <p class="note" id="videoNote"></p>
     <p class="more" id="more"></p>
   </div>
 </div>
 
 <script>
-// ===== 問題データ（楽器ごとにここを増やす）=====
-// 竹の楽器：問題・選択肢・正解・解説は確認済み（2026-09-14）。音は仮の合成音を暫定採用
-const QUIZ = {
-  takebora: {
-    answer: 1, // 0始まり → 2番目「ほら貝」
-    video: "",  // 演奏動画ができたら "video/takebora.mp4" のように入れる（最優先）
-    audio: "",  // 動画がなく音だけの場合は "audio/takebora.mp3" のように入れる
-    ja: {
-      label: "楽器クイズ",
-      question: "この楽器で、|どんな音を表現する？",
-      choices: ["牛の鳴き声", "ほら貝", "お寺の鐘"],
-      explain: "竹の筒に穴をあけたこの楽器は、戦の場面などで「ほら貝」の音を表すのに使われます。本物のほら貝の代わりに、舞台の効果音として鳴らします。"
-    },
-    en: {
-      label: "Instrument Quiz",
-      question: "What sound does this instrument imitate?",
-      choices: ["A cow mooing", "A conch shell horn", "A temple bell"],
-      explain: "This bamboo tube with holes imitates the sound of a conch shell horn, often heard in battle scenes. It is used on stage as a sound effect in place of a real conch."
-    }
-  }
-};
+// =====================================================================
+// 問題データ（1問 = 1ブロック）
+//
+// type: "photo"  … 写真 → 問題文 → 三択        （写真を見て音を想像する）
+//       "listen" … 写真 → 音の再生ボタン → 問題文 → 三択（音を聴いて答える）
+// どちらも、答えたあとは「正解発表 → 解説 → 動画」
+//
+// photo : 写真ファイル（例 "images/q01.jpg"）  空（""）なら「写真 準備中」の枠
+//         listen型で写真を使わない問題は、photo の行ごと消す
+// sound : 問題で聴かせる音（例 "audio/q02.mp3"）空なら仮の音
+// video : 答えのあとの動画（例 "video/q01.mp4"）空なら「動画 準備中」の枠
+// answer: 正解の番号（1〜3）
+// 問題文の「|」は、スマホで改行してよい区切りの位置
+// QRコードのアドレス: https://puppetman03140823-commits.github.io/gakki-quiz/?q=（id）
+// =====================================================================
+const QUIZ = [
+  {
+    id: "takebora", type: "photo", answer: 2,   // 【1】竹の楽器（プレゼン用QRと同じid。変えないこと）
+    photo: "images/takebora.jpg", video: "",
+    ja: { question: "この楽器で、|どんな音を表現する？",
+          choices: ["牛の鳴き声", "ほら貝", "カミナリの音"],
+          explain: "竹の筒に穴をあけたこの楽器は、戦の場面などで「ほら貝」の音を表すのに使われます。本物のほら貝の代わりに、舞台の効果音として鳴らします。" },
+    en: { question: "What sound does this instrument imitate?",
+          choices: ["A cow mooing", "A conch shell horn", "Thunder"],
+          explain: "This bamboo tube with holes imitates the sound of a conch shell horn, often heard in battle scenes. It is used on stage as a sound effect in place of a real conch." }
+  },
+  {
+    id: "ekiro", type: "listen", answer: 1,   // 【2】駅路の鈴
+    photo: "images/ekiro.jpg", sound: "", video: "",
+    ja: { question: "この楽器の音は、|どんな時に使う？",
+          choices: ["馬が登場するとき", "お祈りの場面", "カラオケで盛り上げる時"],
+          explain: "江戸時代、当時の主要な交通手段の一つである馬には、首元に鈴が提げられ、車のクラクションのような役割を果たしていました。この駅路の鈴はその音を模したもので、お芝居では馬が登場する場面などで使用されます。" },
+    en: { question: "When is the sound of this instrument used?",
+          choices: ["When a horse comes on stage", "In a prayer scene", "To liven up karaoke"],
+          explain: "In the Edo period, horses were one of the main ways to travel, and they wore bells around their necks that worked much like a car horn. This instrument, called \"ekiro no suzu,\" imitates that sound. In plays, it is used in scenes where a horse appears." }
+  },
+  {
+    id: "namioto", type: "listen", answer: 3,   // 【3】波音
+    photo: "images/namioto.jpg",   // 大太鼓＋長バチを横に並べた合成写真 sound: "", video: "",
+    ja: { question: "この音は、|何の音？",
+          choices: ["鬼が登場する音", "大ゲンカをしている音", "波が岩にぶつかる音"],
+          explain: "この音は「波音」と呼ばれるもので、海の波が岩場にぶつかる音を表現しています。浜辺が舞台のお芝居で使われます。" },
+    en: { question: "What is this sound?",
+          choices: ["An ogre appearing", "A big fight", "Waves crashing against rocks"],
+          explain: "This is called \"nami-oto\" (wave sound). It represents ocean waves crashing against rocks, and is used in plays set on the seashore." }
+  },
+  {
+    id: "kaigara", type: "photo", answer: 3,   // 【4】貝殻
+    photo: "images/kaigara.jpg", video: "",
+    ja: { question: "これで何の音を、|表現する？",
+          choices: ["砂の上を歩く音", "茶碗が割れる音", "カエルの鳴き声"],
+          explain: "貝殻の表面のギザギザ同士をこすり合わせることで、カエルの鳴き声のような音がします。池が出てくるお芝居などで使われています。" },
+    en: { question: "What sound is made with these?",
+          choices: ["Footsteps on sand", "A rice bowl breaking", "Frogs croaking"],
+          explain: "Rubbing the ridged surfaces of the shells together makes a sound like frogs croaking. It is used in plays with scenes by a pond." }
+  },
+  {
+    id: "yukioto", type: "listen", answer: 1,   // 【5】雪音
+    photo: "images/yukioto.jpg",   // 大太鼓＋銅鑼バチを横に並べた合成写真 sound: "", video: "",
+    ja: { question: "この音は、|何の音？",
+          choices: ["雪の降る音", "花火", "山道を歩く音"],
+          explain: "現実では雪は音もなく降りますが、お芝居では「雪音」という音を使って、雪が降る時の気配のようなものを表現します。" },
+    en: { question: "What is this sound?",
+          choices: ["Snow falling", "Fireworks", "Walking on a mountain path"],
+          explain: "In real life, snow falls without a sound. But in the theater, a sound called \"yuki-oto\" (snow sound) is used to express the quiet feeling of falling snow." }
+  },
+  {
+    id: "amaoto", type: "listen", answer: 3,   // 【6】雨音
+    photo: "images/amaoto.jpg",   // 櫓太鼓 sound: "", video: "",
+    ja: { question: "この音は、|何の音？",
+          choices: ["相撲の力士の登場", "お湯が沸く音", "雨が降る音"],
+          explain: "昔の板屋根や番傘に雨粒が打ち付けられるような、パラパラという雨音をリアルに表現しています。" },
+    en: { question: "What is this sound?",
+          choices: ["A sumo wrestler entering", "Water boiling", "Rain falling"],
+          explain: "It realistically recreates the pattering sound of raindrops hitting an old wooden roof or a traditional oiled-paper umbrella (bangasa)." }
+  },
+  {
+    id: "tooyose", type: "listen", answer: 2,   // 【7】遠寄せ（とおよせ）
+    photo: "images/tooyose.jpg",   // 大太鼓＋銅鑼を横に並べた合成写真 sound: "", video: "",
+    ja: { question: "どんな時に使う音？",
+          choices: ["人形が大暴れしている時", "合戦の場面", "お祭りの場面"],
+          explain: "これは遠寄せ（とおよせ）と呼ばれる音で、合戦の場面で「遠巻きに軍勢が攻め寄せてくる様子」を表現するものです。\n戦場における、ほら貝・陣太鼓・陣鉦（じんがね）などの音を模しています。" },
+    en: { question: "When is this sound used?",
+          choices: ["When a puppet goes on a rampage", "In a battle scene", "In a festival scene"],
+          explain: "This sound is called \"tooyose.\" In battle scenes it expresses an army closing in from a distance.\nIt imitates the sounds heard on a battlefield: conch shell horns, war drums and war gongs (jingane)." }
+  },
+  {
+    id: "geta", type: "photo", answer: 2,   // 【8】八ツ割下駄（写真はまだ）
+    photo: "", video: "",
+    ja: { question: "この下駄は、|どんな時に使う？",
+          choices: ["滑るように舞台を移動する時", "人形の足音を表現する時", "土の上でお芝居をする時"],
+          explain: "これは「八ツ割下駄」と呼ばれるものです。お芝居では下駄を履いた人形が、歩く時の足音を表現するために使います。" },
+    en: { question: "When are these geta clogs used?",
+          choices: ["To glide smoothly across the stage", "To make a puppet's footsteps", "To perform on bare ground"],
+          explain: "These are called \"yatsuwari geta\" (split wooden clogs). In the play, they are used to make the sound of footsteps when a puppet wearing geta walks." }
+  },
+  // 【9】〜【10】準備中
+  ...["q09","q10"].map((id, i) => ({
+    id, type: i % 2 ? "listen" : "photo", answer: 1,
+    photo: "", sound: "", video: "",
+    ja: { question: `（問題${i+9}）準備中`,
+          choices: ["（選択肢1）", "（選択肢2）", "（選択肢3）"], explain: "（解説 準備中）" },
+    en: { question: `(Q${i+9}) Coming soon`,
+          choices: ["(Choice 1)", "(Choice 2)", "(Choice 3)"], explain: "(Explanation coming soon)" }
+  }))
+];
 
 const UI = {
-  ja: { ok:"正解！", ng:"ざんねん…", ans:"答え：", play:"演奏を聴く", playing:"再生中…",
-        note:"※いまは仮の音です", more:"ほかのパネルの楽器にも挑戦してみよう" },
-  en: { ok:"Correct!", ng:"Not quite…", ans:"Answer: ", play:"Listen", playing:"Playing…",
-        note:"*Placeholder sound", more:"Try the other instruments in the exhibit!" }
+  ja: { label:"楽器クイズ", ok:"正解！", ng:"ざんねん…", ans:"答え：",
+        listen:"音を聴く", playing:"再生中…", tmpSound:"仮の音を聴く",
+        mute:"🔇 音が出ないときは、マナーモードを解除してください",
+        photoPh:"写真", videoPh:"動画", soon:"準備中",
+        more:"ほかのパネルの楽器にも挑戦してみよう" },
+  en: { label:"Instrument Quiz", ok:"Correct!", ng:"Not quite…", ans:"Answer: ",
+        listen:"Listen", playing:"Playing…", tmpSound:"Play sample sound",
+        mute:"🔇 No sound? Please turn off silent mode.",
+        photoPh:"Photo", videoPh:"Video", soon:"Coming soon",
+        more:"Try the other instruments in the exhibit!" }
 };
 
-const id = new URLSearchParams(location.search).get("q") || "takebora";
-const q = QUIZ[id] || QUIZ.takebora;
+const id = new URLSearchParams(location.search).get("q");
+const q = QUIZ.find(x => x.id === id) || QUIZ[0];
 let lang = (navigator.language || "ja").startsWith("ja") ? "ja" : "en";
 let picked = null;
+
+const el = (tag, cls, text) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+};
+const playIcon = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+
+function placeholder(kind, label){
+  const d = el("div", "ph " + kind);
+  d.innerHTML = `<div><b></b><span></span></div>`;
+  d.querySelector("b").textContent = label;
+  d.querySelector("span").textContent = UI[lang].soon;
+  return d;
+}
+
+// 「|」の位置でだけ改行させる見出し
+function heading(text){
+  const h = el("h1");
+  text.split("|").forEach(part => {
+    const s = el("span", null, part);
+    s.style.display = "inline-block";
+    h.appendChild(s);
+  });
+  return h;
+}
+
+function soundButton(file, text, small){
+  const b = el("button", "play" + (small ? " small" : ""));
+  b.innerHTML = playIcon + "<span></span>";
+  b.lastChild.textContent = text;
+  b.onclick = () => playSound(file, b, text);
+  return b;
+}
 
 function render(){
   const t = q[lang], u = UI[lang];
   document.documentElement.lang = lang;
   document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("on", b.dataset.l === lang));
-  label.textContent = t.label;
-  // 「、」「？」の後ろなど、区切りのいい所でだけ改行させる
-  question.innerHTML = "";
-  t.question.split("|").forEach(part => {
-    const s = document.createElement("span");
-    s.style.display = "inline-block";
-    s.textContent = part;
-    question.appendChild(s);
-  });
+  label.textContent = u.label;
 
-  choices.innerHTML = "";
+  // ---- 問題の部分 ----
+  stage.innerHTML = "";
+  if (q.type === "photo"){
+    if (q.photo){
+      const img = el("img", "photo"); img.src = q.photo; img.alt = "";
+      stage.appendChild(img);
+    } else {
+      stage.appendChild(placeholder("photo-ph", u.photoPh));
+    }
+    stage.appendChild(heading(t.question));
+  } else {
+    if (q.photo){
+      const img = el("img", "photo"); img.src = q.photo; img.alt = "";
+      stage.appendChild(img);
+    } else if (q.photo === ""){
+      stage.appendChild(placeholder("photo-ph", u.photoPh));
+    }
+    const box = el("div", "sound");
+    box.appendChild(soundButton(q.sound, u.listen));
+    box.appendChild(el("p", "note", u.mute));
+    stage.appendChild(box);
+    stage.appendChild(heading(t.question));
+  }
+
+  const list = el("div", "choices");
   t.choices.forEach((c, i) => {
-    const b = document.createElement("button");
-    b.className = "choice";
+    const b = el("button", "choice");
     b.innerHTML = `<span class="n">${i+1}</span><span></span>`;
     b.lastChild.textContent = c;
     if (picked !== null){
       b.disabled = true;
-      if (i === q.answer) b.classList.add("correct");
+      if (i === q.answer - 1) b.classList.add("correct");
       else if (i === picked) b.classList.add("wrong");
       else b.classList.add("dim");
     }
-    b.onclick = () => { picked = i; render(); result.scrollIntoView({behavior:"smooth", block:"start"}); };
-    choices.appendChild(b);
+    b.onclick = () => {
+      picked = i; render();
+      result.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    list.appendChild(b);
   });
+  stage.appendChild(list);
 
+  // ---- 答えの部分 ----
   result.hidden = picked === null;
-  if (picked !== null){
-    const ok = picked === q.answer;
-    verdict.textContent = ok ? u.ok : u.ng;
-    verdict.className = "verdict " + (ok ? "ok" : "ng");
-    answer.textContent = u.ans + t.choices[q.answer];
-    explain.textContent = t.explain;
-    playText.textContent = u.play;
-    note.textContent = (q.video || q.audio) ? "" : u.note;
-    more.textContent = u.more;
+  if (picked === null) return;
+  const ok = picked === q.answer - 1;
+  verdict.textContent = ok ? u.ok : u.ng;
+  verdict.className = "verdict " + (ok ? "ok" : "ng");
+  answer.textContent = u.ans + t.choices[q.answer - 1];
+  explain.textContent = t.explain;
+  more.textContent = u.more;
+  videoNote.textContent = u.mute;
+
+  if (!videoArea.dataset.lang || videoArea.dataset.lang !== lang || !videoArea.firstChild){
+    videoArea.innerHTML = "";
+    if (q.video){
+      const v = el("video");
+      v.src = q.video; v.controls = true; v.playsInline = true; v.preload = "metadata";
+      videoArea.appendChild(v);
+    } else {
+      const ph = placeholder("video-ph", u.videoPh);
+      ph.firstChild.appendChild(soundButton("", u.tmpSound, true)); // 動画ができるまでの仮の音
+      videoArea.appendChild(ph);
+    }
+    videoArea.dataset.lang = lang;
   }
 }
 
 document.querySelectorAll(".lang button").forEach(b => b.onclick = () => { lang = b.dataset.l; render(); });
 
-// 再生：音源があればそれを、なければ仮の音（ブォーという低い音）を鳴らす
-let audioEl = null;
-play.onclick = () => {
-  if (q.video){
-    if (!movie.src) movie.src = q.video;
-    movie.hidden = false;
-    movie.currentTime = 0; movie.play();
-    return;
-  }
-  if (q.audio){
-    if (!audioEl) audioEl = new Audio(q.audio);
-    audioEl.currentTime = 0; audioEl.play();
-    return;
-  }
-  // 仮の音：音楽ファイル（WAV）をその場で作り、ふつうの音声として再生する
-  // （iPhoneのマナーモードでも鳴るように、Web Audioではなく<audio>で鳴らす）
-  if (!audioEl) audioEl = new Audio(makePlaceholderWav());
+// ---- 音の再生（iPhoneで鳴りやすいよう <audio> で鳴らす）----
+let audioEl = null, tmpUrl = null;
+function playSound(file, btn, text){
+  const src = file || (tmpUrl ||= makePlaceholderWav());
+  if (!audioEl) audioEl = new Audio();
+  if (audioEl.dataset.src !== src){ audioEl.src = src; audioEl.dataset.src = src; }
   audioEl.currentTime = 0;
   audioEl.play().catch(() => {});
-  playText.textContent = UI[lang].playing;
-  audioEl.onended = () => { playText.textContent = UI[lang].play; };
-};
+  btn.lastChild.textContent = UI[lang].playing;
+  audioEl.onended = () => { btn.lastChild.textContent = text; };
+}
 
+// 素材がないときの仮の音（ブォーという低い音）をWAVとして作る
 function makePlaceholderWav(){
   const rate = 22050, dur = 2.2, n = Math.floor(rate * dur);
   const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
