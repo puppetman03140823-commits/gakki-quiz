@@ -55,6 +55,7 @@
   .answer{font-weight:700;margin:0 0 12px}
   .explain{margin:0 0 20px;white-space:pre-line}  /* 解説の改行をそのまま表示 */
   .more{margin:20px 0 0;text-align:center;color:var(--sub);font-size:14px}
+  .privacy{margin:32px 0 0;text-align:center;color:var(--sub);font-size:11px}
 </style>
 
 <div class="wrap">
@@ -78,6 +79,8 @@
     <p class="note" id="videoNote"></p>
     <p class="more" id="more"></p>
   </div>
+
+  <p class="privacy" id="privacy"></p>
 </div>
 
 <script>
@@ -213,12 +216,14 @@ const UI = {
         listen:"音を聴く", playing:"再生中…", tmpSound:"仮の音を聴く",
         mute:"🔇 音が出ないときは、マナーモードを解除してください",
         photoPh:"写真", videoPh:"動画", soon:"準備中",
-        more:"ほかのパネルの楽器にも挑戦してみよう" },
+        more:"ほかのパネルの楽器にも挑戦してみよう",
+        privacy:"このページでは、開かれた回数を数えています（個人を特定する情報は集めていません）" },
   en: { label:"Guess That Sound Quiz", ok:"Correct!", ng:"Not quite…", ans:"Answer: ",
         listen:"Listen", playing:"Playing…", tmpSound:"Play sample sound",
         mute:"🔇 No sound? Please turn off silent mode.",
         photoPh:"Photo", videoPh:"Video", soon:"Coming soon",
-        more:"Try the other instruments in the exhibit!" }
+        more:"Try the other instruments in the exhibit!",
+        privacy:"This page counts how many times it is opened. No personal information is collected." }
 };
 
 const id = new URLSearchParams(location.search).get("q");
@@ -266,6 +271,7 @@ function render(){
   document.documentElement.lang = lang;
   document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("on", b.dataset.l === lang));
   label.textContent = u.label;
+  privacy.textContent = u.privacy;
 
   // ---- 問題の部分 ----
   stage.innerHTML = "";
@@ -375,4 +381,27 @@ function makePlaceholderWav(){
 }
 
 render();
+
+// ---- 開かれた回数を数える（ページを開いたときに1回だけ知らせる）----
+// 送るのは「何番の問題か・日本語か英語か・スマホごとの目印（でたらめな番号）」だけ
+// アドレスに &nocount を付けると数えない（確認作業用）
+(function countOpen(){
+  if (new URLSearchParams(location.search).has("nocount")) return;
+  let visitor = null;
+  try {
+    visitor = localStorage.getItem("gq_visitor");
+    if (!visitor){
+      visitor = (crypto.randomUUID ? crypto.randomUUID()
+        : Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 12)).toLowerCase();
+      localStorage.setItem("gq_visitor", visitor);
+    }
+  } catch (e) { visitor = null; }
+  const body = JSON.stringify({ q: q.id, lang, visitor });
+  const url = "https://gakki-quiz-stats.puppetman03140823.workers.dev/api/hit";
+  try {
+    if (!(navigator.sendBeacon && navigator.sendBeacon(url, new Blob([body], { type: "text/plain" })))){
+      fetch(url, { method: "POST", body, keepalive: true, headers: { "Content-Type": "text/plain" } }).catch(() => {});
+    }
+  } catch (e) {}
+})();
 </script>
