@@ -1,7 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>あの音この音クイズ</title>
+<title>～あの音、この音。～クイズ</title>
 <meta name="robots" content="noindex">
 <style>
   :root{
@@ -189,8 +189,8 @@ const QUIZ = [
           explain: "This sound is called \"tooyose.\" In battle scenes it expresses an army closing in from a distance.\nIt imitates the sounds heard on a battlefield: conch shell horns, war drums and war gongs (jingane)." }
   },
   {
-    id: "geta", type: "photo", answer: 2,   // 【8】八ツ割下駄（写真はまだ）
-    photo: "", video: "",
+    id: "geta", type: "photo", answer: 2,   // 【8】八ツ割下駄（写真は表と裏返しの2足）
+    photo: "images/geta.jpg", video: "",
     ja: { name: "底に切れ目が入った下駄",
           question: "この下駄は、|どんな時に使う？",
           choices: ["少し身長を高く見せたい時", "人形の足音を表現する時", "土の上でお芝居をする時"],
@@ -212,7 +212,7 @@ const QUIZ = [
 ];
 
 const UI = {
-  ja: { label:"あの音この音クイズ", ok:"正解！", ng:"ざんねん…", ans:"答え：",
+  ja: { label:"～あの音、この音。～クイズ", ok:"正解！", ng:"ざんねん…", ans:"答え：",
         listen:"音を聴く", playing:"再生中…", tmpSound:"仮の音を聴く",
         mute:"🔇 音が出ないときは、マナーモードを解除してください",
         photoPh:"写真", videoPh:"動画", soon:"準備中",
