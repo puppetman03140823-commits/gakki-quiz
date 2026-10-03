@@ -139,31 +139,44 @@
 // =====================================================================
 const QUIZ = [
   {
-    id: "takebora", type: "photo", answer: 2,   // 【1】竹の楽器（プレゼン用QRと同じid。変えないこと）
-    photo: "images/takebora.jpg", video: "",
-    ja: { name: "小さな穴が開いた竹筒",
-          question: "この楽器で、|どんな音を表現する？",
-          choices: ["牛の鳴き声", "ほら貝", "ししおどし"],
-          explain: "竹の筒に穴をあけたこの楽器は竹ぼらと呼ばれ、戦の場面などで「ほら貝」の音を表すのに使われます。本物のほら貝の代わりに、舞台の効果音として鳴らします。" },
-    en: { name: "A bamboo tube with small holes",
-          question: "What sound does this instrument imitate?",
-          choices: ["A cow mooing", "A conch shell horn", "A shishi-odoshi (bamboo water clapper)"],
-          explain: "This bamboo tube with holes, called \"takebora,\" imitates the sound of a conch shell horn, often heard in battle scenes. It is used on stage as a sound effect in place of a real conch." }
+    id: "amaoto", type: "listen", answer: 3,   // 【1】雨音
+    // 櫓太鼓
+    photo: "images/amaoto.jpg", sound: "", video: "",
+    ja: { name: "櫓太鼓（やぐらだいこ）",
+          question: "この音は、|何の音？",
+          choices: ["相撲の力士の登場", "モールス信号の音", "雨が降る音"],
+          explain: "櫓太鼓を細い竹のバチで叩くことで、昔の板屋根や番傘に雨粒が打ち付けられるような、パラパラという雨音をリアルに表現しています。" },
+    en: { name: "Yagura-daiko (tower drum)",
+          question: "What is this sound?",
+          choices: ["A sumo wrestler entering", "Morse code", "Rain falling"],
+          explain: "Struck with thin bamboo sticks, the yagura-daiko realistically recreates the pattering sound of raindrops hitting an old wooden roof or a traditional oiled-paper umbrella (bangasa)." }
   },
   {
-    id: "ekiro", type: "listen", answer: 1,   // 【2】駅路の鈴
-    photo: "images/ekiro.jpg", sound: "", video: "",
-    ja: { name: "駅路の鈴",
-          question: "この楽器の音は、|どんな時に使う？",
-          choices: ["馬が登場するとき", "お経を唱える時", "カラオケで盛り上げる時"],
-          explain: "江戸時代、当時の主要な交通手段の一つである馬には、首元に鈴が提げられ、車のクラクションのような役割を果たしていました。この駅路の鈴はその音を模したもので、お芝居では馬が登場する場面などで使用されます。" },
-    en: { name: "Ekiro no suzu (post-road bell)",
-          question: "When is the sound of this instrument used?",
-          choices: ["When a horse comes on stage", "When a sutra is chanted", "To liven up karaoke"],
-          explain: "In the Edo period, horses were one of the main ways to travel, and they wore bells around their necks that worked much like a car horn. This instrument, called \"ekiro no suzu,\" imitates that sound. In plays, it is used in scenes where a horse appears." }
+    id: "geta", type: "photo", answer: 2,   // 【2】八ツ割下駄（写真は表と裏返しの2足）
+    photo: "images/geta.jpg", video: "",
+    ja: { name: "底に切れ目が入った下駄",
+          question: "この下駄は、|どんな時に使う？",
+          choices: ["少し身長を高く見せたい時", "人形の足音を表現する時", "土の上でお芝居をする時"],
+          explain: "これは「八ツ割下駄」と呼ばれるものです。お芝居では下駄を履いた人形が、歩く時の足音を表現するために使います。" },
+    en: { name: "Geta clogs with slits in the sole",
+          question: "When are these geta clogs used?",
+          choices: ["To make a puppet look a little taller", "To make a puppet's footsteps", "To perform on bare ground"],
+          explain: "These are called \"yatsuwari geta\" (split wooden clogs). In the play, they are used to make the sound of footsteps when a puppet wearing geta walks." }
   },
   {
-    id: "namioto", type: "listen", answer: 3,   // 【3】波音
+    id: "kaigara", type: "photo", answer: 3,   // 【3】貝殻
+    photo: "images/kaigara.jpg", video: "",
+    ja: { name: "赤貝の貝殻",
+          question: "この貝殻で、|どんな音を表現する？",
+          choices: ["砂の上を歩く音", "ご飯を食べる音", "カエルの鳴き声"],
+          explain: "貝殻の表面のギザギザ同士をこすり合わせることで、カエルの鳴き声のような音がします。池が出てくるお芝居などで使われています。" },
+    en: { name: "Ark shell",
+          question: "What sound is made with these shells?",
+          choices: ["Footsteps on sand", "Someone eating rice", "Frogs croaking"],
+          explain: "Rubbing the ridged surfaces of the shells together makes a sound like frogs croaking. It is used in plays with scenes by a pond." }
+  },
+  {
+    id: "namioto", type: "listen", answer: 3,   // 【4】波音
     // 平太鼓＋長バチを横に並べた合成写真
     photo: "images/namioto.jpg", sound: "", video: "",
     ja: { name: "平太鼓と長バチ",
@@ -174,18 +187,6 @@ const QUIZ = [
           question: "What is this sound?",
           choices: ["An ogre appearing", "A machine gun", "Waves crashing against rocks"],
           explain: "This is called \"nami-oto\" (wave sound). It represents ocean waves crashing against rocks, and is used in plays set on the seashore." }
-  },
-  {
-    id: "kaigara", type: "photo", answer: 3,   // 【4】貝殻
-    photo: "images/kaigara.jpg", video: "",
-    ja: { name: "赤貝の貝殻",
-          question: "この貝殻で、|どんな音を表現する？",
-          choices: ["砂の上を歩く音", "ご飯を食べる音", "カエルの鳴き声"],
-          explain: "貝殻の表面のギザギザ同士をこすり合わせることで、カエルの鳴き声のような音がします。池が出てくるお芝居などで使われています。" },
-    en: { name: "Ark shell",
-          question: "What sound is made with these shells?",
-          choices: ["Footsteps on sand", "Someone eating rice", "Frogs croaking"],
-          explain: "Rubbing the ridged surfaces of the shells together makes a sound like frogs croaking. It is used in plays with scenes by a pond." }
   },
   {
     id: "yukioto", type: "listen", answer: 1,   // 【5】雪音
@@ -201,17 +202,16 @@ const QUIZ = [
           explain: "In real life, snow falls without a sound. But in the theater, a sound called \"yuki-oto\" (snow sound) is used to express the quiet feeling of falling snow." }
   },
   {
-    id: "amaoto", type: "listen", answer: 3,   // 【6】雨音
-    // 櫓太鼓
-    photo: "images/amaoto.jpg", sound: "", video: "",
-    ja: { name: "櫓太鼓（やぐらだいこ）",
-          question: "この音は、|何の音？",
-          choices: ["相撲の力士の登場", "モールス信号の音", "雨が降る音"],
-          explain: "櫓太鼓を細い竹のバチで叩くことで、昔の板屋根や番傘に雨粒が打ち付けられるような、パラパラという雨音をリアルに表現しています。" },
-    en: { name: "Yagura-daiko (tower drum)",
-          question: "What is this sound?",
-          choices: ["A sumo wrestler entering", "Morse code", "Rain falling"],
-          explain: "Struck with thin bamboo sticks, the yagura-daiko realistically recreates the pattering sound of raindrops hitting an old wooden roof or a traditional oiled-paper umbrella (bangasa)." }
+    id: "ekiro", type: "listen", answer: 1,   // 【6】駅路の鈴
+    photo: "images/ekiro.jpg", sound: "", video: "",
+    ja: { name: "駅路の鈴",
+          question: "この楽器の音は、|どんな時に使う？",
+          choices: ["馬が登場するとき", "お経を唱える時", "カラオケで盛り上げる時"],
+          explain: "江戸時代、当時の主要な交通手段の一つである馬には、首元に鈴が提げられ、車のクラクションのような役割を果たしていました。この駅路の鈴はその音を模したもので、お芝居では馬が登場する場面などで使用されます。" },
+    en: { name: "Ekiro no suzu (post-road bell)",
+          question: "When is the sound of this instrument used?",
+          choices: ["When a horse comes on stage", "When a sutra is chanted", "To liven up karaoke"],
+          explain: "In the Edo period, horses were one of the main ways to travel, and they wore bells around their necks that worked much like a car horn. This instrument, called \"ekiro no suzu,\" imitates that sound. In plays, it is used in scenes where a horse appears." }
   },
   {
     id: "tooyose", type: "listen", answer: 2,   // 【7】遠寄せ（とおよせ）
@@ -227,16 +227,16 @@ const QUIZ = [
           explain: "This sound is called \"tooyose.\" In battle scenes it expresses an army closing in from a distance.\nIt imitates the sounds heard on a battlefield: conch shell horns, war drums and war gongs (jingane)." }
   },
   {
-    id: "geta", type: "photo", answer: 2,   // 【8】八ツ割下駄（写真は表と裏返しの2足）
-    photo: "images/geta.jpg", video: "",
-    ja: { name: "底に切れ目が入った下駄",
-          question: "この下駄は、|どんな時に使う？",
-          choices: ["少し身長を高く見せたい時", "人形の足音を表現する時", "土の上でお芝居をする時"],
-          explain: "これは「八ツ割下駄」と呼ばれるものです。お芝居では下駄を履いた人形が、歩く時の足音を表現するために使います。" },
-    en: { name: "Geta clogs with slits in the sole",
-          question: "When are these geta clogs used?",
-          choices: ["To make a puppet look a little taller", "To make a puppet's footsteps", "To perform on bare ground"],
-          explain: "These are called \"yatsuwari geta\" (split wooden clogs). In the play, they are used to make the sound of footsteps when a puppet wearing geta walks." }
+    id: "takebora", type: "photo", answer: 2,   // 【8】竹の楽器（プレゼン用QRと同じid。変えないこと）
+    photo: "images/takebora.jpg", video: "",
+    ja: { name: "小さな穴が開いた竹筒",
+          question: "この楽器で、|どんな音を表現する？",
+          choices: ["牛の鳴き声", "ほら貝", "ししおどし"],
+          explain: "竹の筒に穴をあけたこの楽器は竹ぼらと呼ばれ、戦の場面などで「ほら貝」の音を表すのに使われます。本物のほら貝の代わりに、舞台の効果音として鳴らします。" },
+    en: { name: "A bamboo tube with small holes",
+          question: "What sound does this instrument imitate?",
+          choices: ["A cow mooing", "A conch shell horn", "A shishi-odoshi (bamboo water clapper)"],
+          explain: "This bamboo tube with holes, called \"takebora,\" imitates the sound of a conch shell horn, often heard in battle scenes. It is used on stage as a sound effect in place of a real conch." }
   }
   // 問題は全8問で確定（2026-10-01）
 ];
