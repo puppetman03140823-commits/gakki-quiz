@@ -84,8 +84,11 @@
   @keyframes blink{50%{opacity:.15}}
   .redeemed{margin:16px 0 0;padding:14px;border-radius:12px;border:3px solid var(--ng);color:var(--ng);
     font-size:22px;font-weight:800;transform:rotate(-3deg)}
-  .staff{margin-top:28px;border:1px solid var(--line);background:#fff;color:var(--sub);border-radius:999px;
-    padding:8px 16px;font-size:13px;cursor:pointer}
+  .staffArea{margin-top:28px;padding-top:16px;border-top:1px dashed var(--line)}
+  .staffArea p{margin:0 0 8px;font-size:13px;color:var(--sub);white-space:pre-line}
+  .staff{display:block;width:100%;border:2px solid var(--ink);background:#fff;color:var(--ink);border-radius:12px;
+    padding:14px 16px;font-size:17px;font-weight:700;cursor:pointer}
+  .staff:active{background:var(--bg)}
 </style>
 
 <div class="wrap">
@@ -258,7 +261,8 @@ const UI = {
         now:"いまの時刻",
         redeemed:"受け取り済み",
         redeemedAt:(t) => `${t} に受け取りました`,
-        staffBtn:"【スタッフ用】受け取り済みにする",
+        staffNote:"受付スタッフの方へ\nプレゼントを渡したら押してください",
+        staffBtn:"受け取り済みにする",
         staffConfirm:"スタッフの方が、プレゼントを渡したときに押してください。\n押すと元に戻せません。受け取り済みにしますか？" },
   en: { label:"Guess That Sound Quiz", ok:"Correct!", ng:"Not quite…", ans:"Answer: ",
         listen:"Listen", playing:"Playing…", tmpSound:"Play sample sound",
@@ -279,7 +283,8 @@ const UI = {
         now:"Current time",
         redeemed:"Gift received",
         redeemedAt:(t) => `Received at ${t}`,
-        staffBtn:"[Staff only] Mark as received",
+        staffNote:"For reception staff:\npress after handing over the gift",
+        staffBtn:"Mark as received",
         staffConfirm:"Staff: press this when you hand over the gift.\nThis cannot be undone. Mark as received?" }
 };
 
@@ -300,6 +305,8 @@ const PRIZE = {
 
 const params = new URLSearchParams(location.search);
 const isResultPage = params.has("result");   // ?result = 成績の画面
+// ★テスト期間だけ★ ?reset = このスマホのクイズの記録だけを消す。本番の前に必ずこの機能を消すこと
+const isResetPage = params.has("reset");
 const id = params.get("q");
 const q = QUIZ.find(x => x.id === id) || QUIZ[0];
 let lang = (navigator.language || "ja").startsWith("ja") ? "ja" : "en";
@@ -539,13 +546,38 @@ function renderFinal(){
       try { localStorage.setItem(REDEEM_KEY, String(Date.now())); } catch (e) {}
       renderFinal();
     };
-    card.appendChild(staff);
+    const area = el("div", "staffArea");
+    area.appendChild(el("p", null, u.staffNote));
+    area.appendChild(staff);
+    card.appendChild(area);
   }
   finalPage.appendChild(card);
   // 問題へのリンクは置かない（パネルを回ってQRを読んでもらうため）
 }
 
-function draw(){ isResultPage ? renderFinal() : render(); }
+// ★テスト期間だけ★ クイズの記録（成績・回答済み・受け取り済み）だけを消す画面
+// 買い物メモ・きんたろうランなど、同じ github.io のほかのアプリの記録には触らない
+function renderReset(){
+  stage.hidden = true; result.hidden = true; finalPage.hidden = false;
+  label.textContent = UI[lang].label;
+  privacy.textContent = UI[lang].privacy;
+  finalPage.innerHTML = "";
+  const card = el("div", "final");
+  card.appendChild(el("h1", null, "テスト用：記録のリセット"));
+  const msg = el("p", "hint", "このスマホに残っている、このクイズの成績・回答済み・受け取り済みの記録を消します。");
+  card.appendChild(msg);
+  const btn = el("button", "staff", "クイズの記録を消す");
+  btn.onclick = () => {
+    if (!window.confirm("このスマホのクイズの記録を消して、最初から試せるようにします。よろしいですか？")) return;
+    try { localStorage.removeItem(ANS_KEY); localStorage.removeItem(REDEEM_KEY); } catch (e) {}
+    msg.textContent = "消しました。QRコードを読むと、最初から試せます。";
+    btn.remove();
+  };
+  card.appendChild(btn);
+  finalPage.appendChild(card);
+}
+
+function draw(){ isResetPage ? renderReset() : isResultPage ? renderFinal() : render(); }
 document.querySelectorAll(".lang button").forEach(b => b.onclick = () => { lang = b.dataset.l; draw(); });
 
 // ---- 音の再生（iPhoneで鳴りやすいよう <audio> で鳴らす）----
@@ -588,7 +620,7 @@ draw();
 // 送るのは「何番の問題か・日本語か英語か・スマホごとの目印（でたらめな番号）」だけ
 // アドレスに &nocount を付けると数えない（確認作業用）
 (function countOpen(){
-  if (isResultPage || params.has("nocount")) return;   // 成績の画面は数えない
+  if (isResultPage || isResetPage || params.has("nocount")) return;   // 成績の画面・リセット画面は数えない
   let visitor = null;
   try {
     visitor = localStorage.getItem("gq_visitor");
