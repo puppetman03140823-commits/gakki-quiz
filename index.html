@@ -56,6 +56,36 @@
   .explain{margin:0 0 20px;white-space:pre-line}  /* 解説の改行をそのまま表示 */
   .more{margin:20px 0 0;text-align:center;color:var(--sub);font-size:14px}
   .privacy{margin:32px 0 0;text-align:center;color:var(--sub);font-size:11px}
+
+  /* 成績（スタンプ） */
+  .locked{margin:0 0 10px;font-size:13px;color:var(--sub);background:var(--bg);border-radius:8px;padding:6px 10px}
+  .progress{margin-top:20px;padding-top:16px;border-top:1px dashed var(--line);text-align:center}
+  .stamps{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin:8px 0}
+  .stamp{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;
+    border:2px solid var(--line);color:var(--sub);background:#fff}
+  .stamp.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+  .stamp.ng{background:#d8cfc2;border-color:#d8cfc2;color:#fff}
+  .score{font-size:15px;font-weight:700;margin:4px 0}
+  .hint{font-size:13px;color:var(--sub);margin:4px 0 0}
+  .go{display:inline-block;margin-top:12px;padding:12px 22px;border-radius:999px;background:var(--ink);color:#fff;
+    font-weight:700;text-decoration:none}
+
+  /* 成績の画面 */
+  .final{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 20px;text-align:center}
+  .final h1{margin:0 0 4px}
+  .big{font-size:44px;font-weight:800;margin:8px 0 0;line-height:1.2}
+  .big small{font-size:18px;font-weight:700}
+  .prize{margin:16px 0 0;padding:14px;border-radius:12px;background:#fdf3e0;border:2px solid #e2b866;font-weight:700}
+  .prize b{display:block;font-size:20px;color:var(--accent)}
+  .clock{margin:18px 0 0;font-variant-numeric:tabular-nums;font-size:15px;color:var(--ink)}
+  .clock .t{font-size:24px;font-weight:800}
+  .live{display:inline-block;width:10px;height:10px;border-radius:50%;background:#d6342b;margin-right:6px;
+    vertical-align:middle;animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.15}}
+  .redeemed{margin:16px 0 0;padding:14px;border-radius:12px;border:3px solid var(--ng);color:var(--ng);
+    font-size:22px;font-weight:800;transform:rotate(-3deg)}
+  .staff{margin-top:28px;border:1px solid var(--line);background:#fff;color:var(--sub);border-radius:999px;
+    padding:8px 16px;font-size:13px;cursor:pointer}
 </style>
 
 <div class="wrap">
@@ -72,13 +102,18 @@
 
   <!-- 答えの部分（どの型も同じ） -->
   <div class="result" id="result" hidden>
+    <p class="locked" id="lockedNote" hidden></p>
     <p class="verdict" id="verdict"></p>
     <p class="answer" id="answer"></p>
     <p class="explain" id="explain"></p>
     <div id="videoArea"></div>
     <p class="note" id="videoNote"></p>
+    <div class="progress" id="progress"></div>
     <p class="more" id="more"></p>
   </div>
+
+  <!-- 成績の画面（?result で開く。受付で見せる画面） -->
+  <div id="finalPage" hidden></div>
 
   <p class="privacy" id="privacy"></p>
 </div>
@@ -199,16 +234,8 @@ const QUIZ = [
           question: "When are these geta clogs used?",
           choices: ["To make a puppet look a little taller", "To make a puppet's footsteps", "To perform on bare ground"],
           explain: "These are called \"yatsuwari geta\" (split wooden clogs). In the play, they are used to make the sound of footsteps when a puppet wearing geta walks." }
-  },
-  // 【9】〜【10】準備中
-  ...["q09","q10"].map((id, i) => ({
-    id, type: i % 2 ? "listen" : "photo", answer: 1,
-    photo: "", sound: "", video: "",
-    ja: { question: `（問題${i+9}）準備中`,
-          choices: ["（選択肢1）", "（選択肢2）", "（選択肢3）"], explain: "（解説 準備中）" },
-    en: { question: `(Q${i+9}) Coming soon`,
-          choices: ["(Choice 1)", "(Choice 2)", "(Choice 3)"], explain: "(Explanation coming soon)" }
-  }))
+  }
+  // 問題は全8問で確定（2026-10-01）
 ];
 
 const UI = {
@@ -217,19 +244,91 @@ const UI = {
         mute:"🔇 音が出ないときは、マナーモードを解除してください",
         photoPh:"写真", videoPh:"動画", soon:"準備中",
         more:"ほかのパネルの楽器にも挑戦してみよう",
-        privacy:"このページでは、開かれた回数を数えています（個人を特定する情報は集めていません）" },
+        privacy:"このページでは、開かれた回数を数えています（個人を特定する情報は集めていません）",
+        locked:"この問題は回答済みです。最初に選んだ答えが記録されています。",
+        score:(a, c) => `いまの成績：${a}／${QUIZ.length}問に回答・正解 ${c}問`,
+        left:(n) => `あと${n}問。ほかのパネルのQRコードも読んでみよう`,
+        allDone:"全問回答しました！",
+        seeResult:"成績を見る",
+        resultTitle:"あなたの成績",
+        resultBig:(c) => `${c}`, resultOf:`／${QUIZ.length}問 正解`,
+        notYet:(n, m) => `まだ${n}問、答えていない問題があります。` + (m ? `すべて答えて${m}問以上正解すると、受付でプレゼントを受け取れます。` : `すべて答えると、受付でプレゼントを受け取れます。`),
+        showDesk:"この画面を受付で見せてください",
+        thanks:"参加ありがとうございました！",
+        now:"いまの時刻",
+        redeemed:"受け取り済み",
+        redeemedAt:(t) => `${t} に受け取りました`,
+        staffBtn:"【スタッフ用】受け取り済みにする",
+        staffConfirm:"スタッフの方が、プレゼントを渡したときに押してください。\n押すと元に戻せません。受け取り済みにしますか？" },
   en: { label:"Guess That Sound Quiz", ok:"Correct!", ng:"Not quite…", ans:"Answer: ",
         listen:"Listen", playing:"Playing…", tmpSound:"Play sample sound",
         mute:"🔇 No sound? Please turn off silent mode.",
         photoPh:"Photo", videoPh:"Video", soon:"Coming soon",
         more:"Try the other instruments in the exhibit!",
-        privacy:"This page counts how many times it is opened. No personal information is collected." }
+        privacy:"This page counts how many times it is opened. No personal information is collected.",
+        locked:"You have already answered this question. Your first answer has been recorded.",
+        score:(a, c) => `Your progress: ${a}/${QUIZ.length} answered, ${c} correct`,
+        left:(n) => `${n} to go. Find the QR codes on the other panels!`,
+        allDone:"You have answered every question!",
+        seeResult:"See my score",
+        resultTitle:"Your score",
+        resultBig:(c) => `${c}`, resultOf:` / ${QUIZ.length} correct`,
+        notYet:(n, m) => `${n} question(s) left. ` + (m ? `Answer them all and get ${m} or more right to receive a gift at the reception desk.` : `Answer them all to receive a gift at the reception desk.`),
+        showDesk:"Please show this screen at the reception desk",
+        thanks:"Thank you for playing!",
+        now:"Current time",
+        redeemed:"Gift received",
+        redeemedAt:(t) => `Received at ${t}`,
+        staffBtn:"[Staff only] Mark as received",
+        staffConfirm:"Staff: press this when you hand over the gift.\nThis cannot be undone. Mark as received?" }
 };
 
-const id = new URLSearchParams(location.search).get("q");
+// =====================================================================
+// プレゼントの設定（条件が決まったら、ここだけ書き換える）
+// needAll : true = 全8問に答えた人だけ「受付で見せてください」を出す
+// tiers   : 正解数ごとのプレゼント。上から順に見て、最初に当てはまったものを出す
+//           空 [] のあいだは、正解数と「受付で見せてください」だけを出す
+//           ja/en（景品名）は省略できる。省略すると名前は出さない
+//           例: [ { min: 8, ja: "全問正解賞", en: "Perfect Score Prize" },
+//                 { min: 5, ja: "がんばったで賞", en: "Great Job Prize" } ]
+//           どれにも当てはまらない人には「参加ありがとうございました」だけを出す
+// =====================================================================
+const PRIZE = {
+  needAll: true,
+  tiers: [ { min: 5 } ]   // 2026-10-03 仮決定：5問以上正解でプレゼント（景品名はまだなので出さない）
+};
+
+const params = new URLSearchParams(location.search);
+const isResultPage = params.has("result");   // ?result = 成績の画面
+const id = params.get("q");
 const q = QUIZ.find(x => x.id === id) || QUIZ[0];
 let lang = (navigator.language || "ja").startsWith("ja") ? "ja" : "en";
-let picked = null;
+
+// ---- 成績の記録（このスマホの中だけに保存。名前などは持たない）----
+// gq_answers_v1  = { 問題id: { pick: 選んだ番号(0〜2), correct: true/false, ts: 答えた日時 } }
+// gq_redeemed_v1 = プレゼントを受け取った日時（ミリ秒）
+const ANS_KEY = "gq_answers_v1", REDEEM_KEY = "gq_redeemed_v1";
+function loadAnswers(){
+  try { return JSON.parse(localStorage.getItem(ANS_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveFirstAnswer(qid, pick, correct){
+  const a = loadAnswers();
+  if (a[qid]) return;                                  // ズル防止①：最初の答えだけ有効
+  a[qid] = { pick, correct, ts: Date.now() };
+  try { localStorage.setItem(ANS_KEY, JSON.stringify(a)); } catch (e) {}
+}
+function loadRedeemed(){
+  try { return Number(localStorage.getItem(REDEEM_KEY)) || 0; } catch (e) { return 0; }
+}
+function scoreNow(){
+  const a = loadAnswers();
+  const done = QUIZ.filter(x => a[x.id]);
+  return { a, answered: done.length, correct: done.filter(x => a[x.id].correct).length };
+}
+
+const prev = loadAnswers()[q.id];
+let picked = prev && Number.isInteger(prev.pick) ? prev.pick : null;   // 回答済みなら最初の答えで表示
+let lockedOnLoad = picked !== null;
 
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
@@ -311,7 +410,10 @@ function render(){
       else b.classList.add("dim");
     }
     b.onclick = () => {
-      picked = i; render();
+      if (picked !== null) return;
+      picked = i;
+      saveFirstAnswer(q.id, i, i === q.answer - 1);
+      render();
       result.scrollIntoView({ behavior: "smooth", block: "start" });
     };
     list.appendChild(b);
@@ -328,6 +430,9 @@ function render(){
   explain.textContent = t.explain;
   more.textContent = u.more;
   videoNote.textContent = u.mute;
+  lockedNote.hidden = !lockedOnLoad;
+  lockedNote.textContent = u.locked;
+  renderProgress();
 
   if (!videoArea.dataset.lang || videoArea.dataset.lang !== lang || !videoArea.firstChild){
     videoArea.innerHTML = "";
@@ -344,7 +449,104 @@ function render(){
   }
 }
 
-document.querySelectorAll(".lang button").forEach(b => b.onclick = () => { lang = b.dataset.l; render(); });
+// ---- 答えのあとの「いまの成績」（スタンプ8個）----
+function stampsEl(a){
+  const box = el("div", "stamps");
+  QUIZ.forEach((x, i) => {
+    const r = a[x.id];
+    box.appendChild(el("span", "stamp" + (r ? (r.correct ? " ok" : " ng") : ""), String(i + 1)));
+  });
+  return box;
+}
+function resultUrl(){
+  return location.pathname + "?result";
+}
+function renderProgress(){
+  const u = UI[lang], s = scoreNow();
+  progress.innerHTML = "";
+  progress.appendChild(stampsEl(s.a));
+  progress.appendChild(el("p", "score", u.score(s.answered, s.correct)));
+  const left = QUIZ.length - s.answered;
+  progress.appendChild(el("p", "hint", left > 0 ? u.left(left) : u.allDone));
+  if (left === 0){
+    const go = el("a", "go", u.seeResult); go.href = resultUrl();
+    progress.appendChild(go);
+  }
+}
+
+// ---- 成績の画面（受付で見せる）----
+function pad(n){ return String(n).padStart(2, "0"); }
+function fmtDate(d){
+  return lang === "ja"
+    ? `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`
+    : d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+function fmtTime(d){ return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
+let clockTimer = null;
+function renderFinal(){
+  const u = UI[lang], s = scoreNow(), redeemedAt = loadRedeemed();
+  document.documentElement.lang = lang;
+  document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("on", b.dataset.l === lang));
+  label.textContent = u.label;
+  privacy.textContent = u.privacy;
+  stage.hidden = true; result.hidden = true; finalPage.hidden = false;
+  finalPage.innerHTML = "";
+
+  const card = el("div", "final");
+  card.appendChild(el("h1", null, u.resultTitle));
+  const big = el("p", "big", u.resultBig(s.correct));
+  big.appendChild(el("small", null, u.resultOf));
+  card.appendChild(big);
+  card.appendChild(stampsEl(s.a));
+
+  const left = QUIZ.length - s.answered;
+  const tier = PRIZE.tiers.find(t => s.correct >= t.min);
+  // プレゼントを渡せる人か（全問回答の条件を満たし、景品の条件にも当てはまる）
+  const eligible = !(PRIZE.needAll && left > 0) && !(PRIZE.tiers.length && !tier);
+  if (redeemedAt){
+    // ズル防止③：受け取り済みなら、もうプレゼントの案内は出さない
+    card.appendChild(el("p", "redeemed", u.redeemed));
+    const d = new Date(redeemedAt);
+    card.appendChild(el("p", "hint", u.redeemedAt(`${fmtDate(d)} ${fmtTime(d).slice(0, 5)}`)));
+  } else if (PRIZE.needAll && left > 0){
+    card.appendChild(el("p", "hint", u.notYet(left, PRIZE.tiers.length ? Math.min(...PRIZE.tiers.map(t => t.min)) : 0)));
+  } else {
+    if (!eligible){
+      card.appendChild(el("p", "prize", u.thanks));
+    } else {
+      const p = el("div", "prize");
+      if (tier && tier[lang]) p.appendChild(el("b", null, tier[lang]));   // 景品名があるときだけ出す
+      p.appendChild(document.createTextNode(u.showDesk));
+      card.appendChild(p);
+    }
+  }
+
+  // ズル防止②：今日の日付と、秒まで動く時計（スクショだと止まっているので見分けられる）
+  const clock = el("div", "clock");
+  clock.innerHTML = `<span class="live"></span><span class="d"></span><br><span class="t"></span>`;
+  card.appendChild(clock);
+  const tick = () => {
+    const n = new Date();
+    clock.querySelector(".d").textContent = `${u.now}　${fmtDate(n)}`;
+    clock.querySelector(".t").textContent = fmtTime(n);
+  };
+  tick(); clearInterval(clockTimer); clockTimer = setInterval(tick, 1000);
+
+  if (!redeemedAt && eligible){
+    const staff = el("button", "staff", u.staffBtn);
+    staff.onclick = () => {
+      if (!window.confirm(u.staffConfirm)) return;
+      try { localStorage.setItem(REDEEM_KEY, String(Date.now())); } catch (e) {}
+      renderFinal();
+    };
+    card.appendChild(staff);
+  }
+  finalPage.appendChild(card);
+  // 問題へのリンクは置かない（パネルを回ってQRを読んでもらうため）
+}
+
+function draw(){ isResultPage ? renderFinal() : render(); }
+document.querySelectorAll(".lang button").forEach(b => b.onclick = () => { lang = b.dataset.l; draw(); });
 
 // ---- 音の再生（iPhoneで鳴りやすいよう <audio> で鳴らす）----
 let audioEl = null, tmpUrl = null;
@@ -380,13 +582,13 @@ function makePlaceholderWav(){
   return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
 }
 
-render();
+draw();
 
 // ---- 開かれた回数を数える（ページを開いたときに1回だけ知らせる）----
 // 送るのは「何番の問題か・日本語か英語か・スマホごとの目印（でたらめな番号）」だけ
 // アドレスに &nocount を付けると数えない（確認作業用）
 (function countOpen(){
-  if (new URLSearchParams(location.search).has("nocount")) return;
+  if (isResultPage || params.has("nocount")) return;   // 成績の画面は数えない
   let visitor = null;
   try {
     visitor = localStorage.getItem("gq_visitor");
