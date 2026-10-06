@@ -33,6 +33,7 @@
     border:0;border-radius:14px;background:var(--accent);color:#fff;
     font-size:18px;font-weight:700;padding:16px;cursor:pointer}
   .play svg{width:22px;height:22px;fill:currentColor}
+  .play.playing{background:var(--ink)}   /* 再生中は「止める」ボタンとして色を変える */
   .play.small{width:auto;font-size:14px;padding:8px 16px;margin-top:10px;border-radius:999px}
   .sound{margin-bottom:20px}
   .note{font-size:12px;color:var(--sub);margin:8px 0 0;text-align:center}
@@ -243,7 +244,7 @@ const QUIZ = [
 
 const UI = {
   ja: { label:"～あの音、この音。～クイズ", ok:"正解！", ng:"ざんねん…", ans:"答え：",
-        listen:"音を聴く", playing:"再生中…", tmpSound:"仮の音を聴く",
+        listen:"音を聴く", playing:"再生中…", stop:"止める", tmpSound:"仮の音を聴く",
         mute:"🔇 音が出ないときは、マナーモードを解除してください",
         photoPh:"写真", videoPh:"動画", soon:"準備中",
         more:"ほかのパネルの楽器にも挑戦してみよう",
@@ -265,7 +266,7 @@ const UI = {
         staffBtn:"受け取り済みにする",
         staffConfirm:"スタッフの方が、プレゼントを渡したときに押してください。\n押すと元に戻せません。受け取り済みにしますか？" },
   en: { label:"Guess That Sound Quiz", ok:"Correct!", ng:"Not quite…", ans:"Answer: ",
-        listen:"Listen", playing:"Playing…", tmpSound:"Play sample sound",
+        listen:"Listen", playing:"Playing…", stop:"Stop", tmpSound:"Play sample sound",
         mute:"🔇 No sound? Please turn off silent mode.",
         photoPh:"Photo", videoPh:"Video", soon:"Coming soon",
         more:"Try the other instruments in the exhibit!",
@@ -344,6 +345,7 @@ const el = (tag, cls, text) => {
   return e;
 };
 const playIcon = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+const stopIcon = '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
 
 function placeholder(kind, label){
   const d = el("div", "ph " + kind);
@@ -364,15 +366,22 @@ function heading(text){
   return h;
 }
 
+// 再生ボタン（押すと「止める」に切り替わり、もう一度押すと止まる）
 function soundButton(file, text, small){
   const b = el("button", "play" + (small ? " small" : ""));
-  b.innerHTML = playIcon + "<span></span>";
-  b.lastChild.textContent = text;
-  b.onclick = () => playSound(file, b, text);
+  b.dataset.text = text;
+  setButtonState(b, false);
+  b.onclick = () => (playingBtn === b ? stopSound() : playSound(file, b));
   return b;
+}
+function setButtonState(b, playing){
+  b.innerHTML = (playing ? stopIcon : playIcon) + "<span></span>";
+  b.lastChild.textContent = playing ? UI[lang].stop : b.dataset.text;
+  b.classList.toggle("playing", playing);
 }
 
 function render(){
+  stopSound();   // 描き直すとボタンが作り直されるので、鳴っている音はいったん止める
   const t = q[lang], u = UI[lang];
   document.documentElement.lang = lang;
   document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("on", b.dataset.l === lang));
@@ -581,15 +590,24 @@ function draw(){ isResetPage ? renderReset() : isResultPage ? renderFinal() : re
 document.querySelectorAll(".lang button").forEach(b => b.onclick = () => { lang = b.dataset.l; draw(); });
 
 // ---- 音の再生（iPhoneで鳴りやすいよう <audio> で鳴らす）----
-let audioEl = null, tmpUrl = null;
-function playSound(file, btn, text){
+let audioEl = null, tmpUrl = null, playingBtn = null;
+function playSound(file, btn){
   const src = file || (tmpUrl ||= makePlaceholderWav());
-  if (!audioEl) audioEl = new Audio();
+  if (!audioEl){
+    audioEl = new Audio();
+    audioEl.onended = () => stopSound();
+  }
+  if (playingBtn && playingBtn !== btn) setButtonState(playingBtn, false);   // ほかのボタンで再生中なら戻す
   if (audioEl.dataset.src !== src){ audioEl.src = src; audioEl.dataset.src = src; }
   audioEl.currentTime = 0;
-  audioEl.play().catch(() => {});
-  btn.lastChild.textContent = UI[lang].playing;
-  audioEl.onended = () => { btn.lastChild.textContent = text; };
+  audioEl.play().catch(() => stopSound());
+  playingBtn = btn;
+  setButtonState(btn, true);
+}
+function stopSound(){
+  if (audioEl){ audioEl.pause(); audioEl.currentTime = 0; }
+  if (playingBtn) setButtonState(playingBtn, false);
+  playingBtn = null;
 }
 
 // 素材がないときの仮の音（ブォーという低い音）をWAVとして作る
