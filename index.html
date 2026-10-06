@@ -141,7 +141,7 @@ const QUIZ = [
   {
     id: "amaoto", type: "listen", answer: 3,   // 【1】雨音
     // 櫓太鼓
-    photo: "images/amaoto.jpg", sound: "", video: "",
+    photo: "images/amaoto.jpg", sound: "audio/amaoto.mp3", video: "",
     ja: { name: "櫓太鼓（やぐらだいこ）",
           question: "この音は、|何の音？",
           choices: ["相撲の力士の登場", "モールス信号の音", "雨が降る音"],
@@ -153,7 +153,7 @@ const QUIZ = [
   },
   {
     id: "geta", type: "photo", answer: 2,   // 【2】八ツ割下駄（写真は表と裏返しの2足）
-    photo: "images/geta.jpg", video: "",
+    photo: "images/geta.jpg", sound: "audio/geta.mp3", video: "",   // 八割02（audio/geta2.mp3）は未使用
     ja: { name: "底に切れ目が入った下駄",
           question: "この下駄は、|どんな時に使う？",
           choices: ["少し身長を高く見せたい時", "人形の足音を表現する時", "土の上でお芝居をする時"],
@@ -165,7 +165,7 @@ const QUIZ = [
   },
   {
     id: "kaigara", type: "photo", answer: 3,   // 【3】貝殻
-    photo: "images/kaigara.jpg", video: "",
+    photo: "images/kaigara.jpg", sound: "audio/kaigara.mp3", video: "",
     ja: { name: "赤貝の貝殻",
           question: "この貝殻で、|どんな音を表現する？",
           choices: ["砂の上を歩く音", "ご飯を食べる音", "カエルの鳴き声"],
@@ -178,7 +178,7 @@ const QUIZ = [
   {
     id: "namioto", type: "listen", answer: 3,   // 【4】波音
     // 平太鼓＋長バチを横に並べた合成写真
-    photo: "images/namioto.jpg", sound: "", video: "",
+    photo: "images/namioto.jpg", sound: "audio/namioto.mp3", video: "",
     ja: { name: "平太鼓と長バチ",
           question: "この音は、|何の音？",
           choices: ["鬼が登場する音", "マシンガンの音", "波が岩にぶつかる音"],
@@ -191,7 +191,7 @@ const QUIZ = [
   {
     id: "yukioto", type: "listen", answer: 1,   // 【5】雪音
     // 平太鼓＋銅鑼バチを横に並べた合成写真
-    photo: "images/yukioto.jpg", sound: "", video: "",
+    photo: "images/yukioto.jpg", sound: "audio/yukioto.mp3", video: "",
     ja: { name: "平太鼓と銅鑼バチ",
           question: "この音は、|何の音？",
           choices: ["雪の降る音", "花火", "布団をたたく音"],
@@ -203,7 +203,7 @@ const QUIZ = [
   },
   {
     id: "ekiro", type: "listen", answer: 1,   // 【6】駅路の鈴
-    photo: "images/ekiro.jpg", sound: "", video: "",
+    photo: "images/ekiro.jpg", sound: "audio/ekiro.mp3", video: "",
     ja: { name: "駅路の鈴",
           question: "この楽器の音は、|どんな時に使う？",
           choices: ["馬が登場するとき", "お経を唱える時", "カラオケで盛り上げる時"],
@@ -216,7 +216,7 @@ const QUIZ = [
   {
     id: "tooyose", type: "listen", answer: 2,   // 【7】遠寄せ（とおよせ）
     // 平太鼓＋銅鑼を横に並べた合成写真
-    photo: "images/tooyose.jpg", sound: "", video: "",
+    photo: "images/tooyose.jpg", sound: "audio/tooyose.mp3", video: "",
     ja: { name: "平太鼓と銅鑼",
           question: "どんな時に使う音？",
           choices: ["夫婦げんかの音", "合戦の場面", "お祭りの場面"],
@@ -228,7 +228,7 @@ const QUIZ = [
   },
   {
     id: "takebora", type: "photo", answer: 2,   // 【8】竹の楽器（プレゼン用QRと同じid。変えないこと）
-    photo: "images/takebora.jpg", video: "",
+    photo: "images/takebora.jpg", sound: "audio/takebora.mp3", video: "",
     ja: { name: "小さな穴が開いた竹筒",
           question: "この楽器で、|どんな音を表現する？",
           choices: ["牛の鳴き声", "ほら貝", "ししおどし"],
@@ -449,7 +449,7 @@ function render(){
       videoArea.appendChild(v);
     } else {
       const ph = placeholder("video-ph", u.videoPh);
-      ph.firstChild.appendChild(soundButton("", u.tmpSound, true)); // 動画ができるまでの仮の音
+      ph.firstChild.appendChild(soundButton(q.sound || "", q.sound ? u.listen : u.tmpSound, true)); // 動画ができるまでは、その問題の音（なければ仮の音）
       videoArea.appendChild(ph);
     }
     videoArea.dataset.lang = lang;
