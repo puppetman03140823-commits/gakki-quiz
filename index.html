@@ -154,7 +154,7 @@ const QUIZ = [
   },
   {
     id: "geta", type: "photo", answer: 2,   // 【2】八ツ割下駄（写真は表と裏返しの2足）
-    photo: "images/geta.jpg", sound: "audio/geta.mp3", video: "",   // 八割02（audio/geta2.mp3）は未使用
+    photo: "images/geta.jpg", sound: "audio/geta.mp3", video: "video/geta.mp4",   // 八割02（audio/geta2.mp3）は未使用
     ja: { name: "底に切れ目が入った下駄",
           question: "この下駄は、|どんな時に使う？",
           choices: ["少し身長を高く見せたい時", "人形の足音を表現する時", "土の上でお芝居をする時"],
@@ -192,7 +192,7 @@ const QUIZ = [
   {
     id: "yukioto", type: "listen", answer: 1,   // 【5】雪音
     // 平太鼓＋銅鑼バチを横に並べた合成写真
-    photo: "images/yukioto.jpg", sound: "audio/yukioto.mp3", video: "",
+    photo: "images/yukioto.jpg", sound: "audio/yukioto.mp3", video: "video/yukioto.mp4",
     ja: { name: "平太鼓と銅鑼バチ",
           question: "この音は、|何の音？",
           choices: ["雪の降る音", "花火", "布団をたたく音"],
@@ -204,7 +204,7 @@ const QUIZ = [
   },
   {
     id: "ekiro", type: "listen", answer: 1,   // 【6】駅路の鈴
-    photo: "images/ekiro.jpg", sound: "audio/ekiro.mp3", video: "",
+    photo: "images/ekiro.jpg", sound: "audio/ekiro.mp3", video: "video/ekiro.mp4",
     ja: { name: "駅路の鈴",
           question: "この楽器の音は、|どんな時に使う？",
           choices: ["馬が登場するとき", "お経を唱える時", "カラオケで盛り上げる時"],
@@ -217,7 +217,7 @@ const QUIZ = [
   {
     id: "tooyose", type: "listen", answer: 2,   // 【7】遠寄せ（とおよせ）
     // 平太鼓＋銅鑼を横に並べた合成写真
-    photo: "images/tooyose.jpg", sound: "audio/tooyose.mp3", video: "",
+    photo: "images/tooyose.jpg", sound: "audio/tooyose.mp3", video: "video/tooyose.mp4",
     ja: { name: "平太鼓と銅鑼",
           question: "どんな時に使う音？",
           choices: ["夫婦げんかの音", "合戦の場面", "お祭りの場面"],
@@ -245,7 +245,7 @@ const QUIZ = [
 const UI = {
   ja: { label:"～あの音、この音。～クイズ", ok:"正解！", ng:"ざんねん…", ans:"答え：",
         listen:"音を聴く", playing:"再生中…", stop:"止める", tmpSound:"仮の音を聴く",
-        mute:"🔇 音が出ないときは、マナーモードを解除してください",
+        mute:"🔇 音が出ないときは、|マナーモードを解除してください",
         photoPh:"写真", videoPh:"動画", soon:"準備中",
         more:"ほかのパネルの楽器にも挑戦してみよう",
         privacy:"このページでは、開かれた回数を数えています（個人を特定する情報は集めていません）",
@@ -355,6 +355,17 @@ function placeholder(kind, label){
   return d;
 }
 
+// 文中の「|」の位置でだけ改行させる（1〜2文字だけが次の行に落ちるのを防ぐ）
+function breakable(node, text){
+  node.innerHTML = "";
+  text.split("|").forEach(part => {
+    const s = el("span", null, part);
+    s.style.display = "inline-block";
+    node.appendChild(s);
+  });
+  return node;
+}
+
 // 「|」の位置でだけ改行させる見出し
 function heading(text){
   const h = el("h1");
@@ -409,7 +420,7 @@ function render(){
     if (t.name) stage.appendChild(el("p", "name", t.name));   // 写真の下の名前
     const box = el("div", "sound");
     box.appendChild(soundButton(q.sound, u.listen));
-    box.appendChild(el("p", "note", u.mute));
+    box.appendChild(breakable(el("p", "note"), u.mute));
     stage.appendChild(box);
     stage.appendChild(heading(t.question));
   }
@@ -445,7 +456,7 @@ function render(){
   answer.textContent = u.ans + t.choices[q.answer - 1];
   explain.textContent = t.explain;
   more.textContent = u.more;
-  videoNote.textContent = u.mute;
+  breakable(videoNote, u.mute);
   lockedNote.hidden = !lockedOnLoad;
   lockedNote.textContent = u.locked;
   renderProgress();
@@ -454,7 +465,9 @@ function render(){
     videoArea.innerHTML = "";
     if (q.video){
       const v = el("video");
-      v.src = q.video; v.controls = true; v.playsInline = true; v.preload = "metadata";
+      // 「#t=0.1」を付けると、iPhoneでも再生前に最初の場面が表示される
+      v.src = q.video + "#t=0.1"; v.controls = true; v.playsInline = true; v.preload = "metadata";
+      v.addEventListener("play", () => stopSound());   // 動画を流したら、音のボタンの音は止める
       videoArea.appendChild(v);
     } else {
       const ph = placeholder("video-ph", u.videoPh);
@@ -598,6 +611,7 @@ function playSound(file, btn){
     audioEl.onended = () => stopSound();
   }
   if (playingBtn && playingBtn !== btn) setButtonState(playingBtn, false);   // ほかのボタンで再生中なら戻す
+  document.querySelectorAll("video").forEach(v => v.pause());               // 動画が流れていたら止める
   if (audioEl.dataset.src !== src){ audioEl.src = src; audioEl.dataset.src = src; }
   audioEl.currentTime = 0;
   audioEl.play().catch(() => stopSound());
